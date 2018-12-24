@@ -81,16 +81,18 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
          float px = rho * cos(phi);
          float py = rho * sin(phi);
 
-         x_ = VectorXd(4);
+         x_ = VectorXd(n_x_);
          x_ << px,
          py,
          0,
+         phi,
          0;
      } else if (meas_package.sensor_type_ == MeasurementPackage::LASER) {
         // Initialize state.
-        x_ = VectorXd(4);
+        x_ = VectorXd(n_x_);
         x_ << meas_package.raw_measurements_[0],
         meas_package.raw_measurements_[1],
+        0,
         0,
         0;
      }
@@ -124,9 +126,8 @@ void UKF::Prediction(double delta_t) {
    MatrixXd P_aug_ = MatrixXd(n_aug_, n_aug_);
    MatrixXd Xsig_aug_ = MatrixXd(n_aug_, 2 * n_aug_ + 1);
 
+   x_aug_.setZero();
    x_aug_.head(n_x_) = x_;
-   x_aug_(5) = 0;
-   x_aug_(6) = 0;
 
    MatrixXd Q_ = MatrixXd(2, 2);
    Q_ << std_a_ * std_a_, 0, 0, std_yawdd_ * std_yawdd_;
@@ -284,7 +285,6 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
    * covariance, P_.
    * You can also calculate the radar NIS, if desired.
    */
-
    // set measurement dimension, radar can measure r, phi, and r_dot
    int n_z_ = 3;
 
