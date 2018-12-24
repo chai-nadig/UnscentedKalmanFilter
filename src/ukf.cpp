@@ -218,9 +218,82 @@ void UKF::UpdateLidar(MeasurementPackage meas_package) {
 
 void UKF::UpdateRadar(MeasurementPackage meas_package) {
   /**
-   * TODO: Complete this function! Use radar data to update the belief
+   * Use radar data to update the belief
    * about the object's position. Modify the state vector, x_, and
    * covariance, P_.
    * You can also calculate the radar NIS, if desired.
    */
+
+   // set measurement dimension, radar can measure r, phi, and r_dot
+   int n_z_ = 3;
+
+    // mean predicted measurement
+    VectorXd z_pred_ = VectorXd(n_z_);
+    z_pred_.setZero();
+
+    // measurement covariance matrix S
+    MatrixXd S = MatrixXd(n_z_, n_z_);
+
+    // create matrix for sigma points in measurement space
+    MatrixXd Zsig_ = MatrixXd(n_z_, 2 * n_aug_ + 1);
+
+    // transform sigma points into measurement space
+    // calculate mean predicted measurement
+    // calculate innovation covariance matrix S
+
+    for (int i=0; i < 2 * n_aug_ + 1; i++) {
+
+      VectorXd xk1 = Xsig_pred_.col(i);
+
+      double px = xk1[0];
+      double py = xk1[1];
+      double v = xk1[2];
+      double psi = xk1[3];
+      double psi_dot = xk1[4];
+
+      double rho = sqrt(px*px + py*py);
+      double phi = atan2(py, px);
+      double rho_dot = (px*v*cos(psi) + py*v*sin(psi))/rho;
+
+      VectorXd Zk1 = VectorXd(n_z_);
+      Zk1 << rho, phi, rho_dot;
+      Zsig_.col(i) = Zk1;
+
+      z_pred_ += weights_[i] * Zk1;
+    }
+
+    S.setZero();
+    for (int i=0; i < 2 * n_aug_ + 1; i++) {
+        VectorXd diff = (Zsig_.col(i) - z_pred_);
+        S += weights_[i] * diff * diff.transpose();
+    }
+    MatrixXd R = MatrixXd(n_z_, n_z_);
+    R << std_radr_ * std_radr_, 0, 0,
+    0, std_radphi_ * std_radphi_, 0,
+    0, 0, std_radrd_ * std_radrd_;
+
+    S += R;
+
+    // create matrix for cross correlation Tc
+    MatrixXd Tc = MatrixXd(n_x_, n_z_);
+
+    // calculate cross correlation matrix
+    Tc.setZero();
+    for (int i =0; i < 2 * n_aug_ + 1; i++) {
+        Tc += weights_[i] * (Xsig_pred_.col(i) - x_) * (Zsig_.col(i) - z_pred_).transpose();
+    }
+
+    // calculate Kalman gain K;
+    MatrixXd K = Tc * S.inverse();
+
+    // vector for incoming radar measurement
+    VectorXd z_ = meas_package.raw_measurements_;
+
+    // update state mean and covariance matrix
+    VectorXd z_diff = z_ - z_pred_;
+    while (z_diff(1)> M_PI) z_diff(1) -= 2. * M_PI;
+    while (z_diff(1)<-M_PI) z_diff(1) += 2. * M_PI;
+
+    x_ = x_ + K * z_diff;
+    P_ = P_ - K * S * K.transpose();
 }
