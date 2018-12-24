@@ -250,7 +250,7 @@ void UKF::UpdateLidar(MeasurementPackage meas_package) {
    }
 
    MatrixXd R = MatrixXd(n_z_, n_z_);
-   R << std_laspx_ * std_laspx_, 0, 0, std_laspy * std_laspy;
+   R << std_laspx_ * std_laspx_, 0, 0, std_laspy_ * std_laspy_;
 
    S += R;
 
@@ -310,7 +310,6 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
       double py = xk1[1];
       double v = xk1[2];
       double psi = xk1[3];
-      double psi_dot = xk1[4];
 
       double rho = sqrt(px*px + py*py);
       double phi = atan2(py, px);
