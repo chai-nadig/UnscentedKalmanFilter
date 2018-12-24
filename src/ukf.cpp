@@ -209,11 +209,72 @@ void UKF::Prediction(double delta_t) {
 
 void UKF::UpdateLidar(MeasurementPackage meas_package) {
   /**
-   * TODO: Complete this function! Use lidar data to update the belief
+   * Use lidar data to update the belief
    * about the object's position. Modify the state vector, x_, and
    * covariance, P_.
    * You can also calculate the lidar NIS, if desired.
    */
+   int n_z_ = 2;
+
+   // mean predicted measurement
+   VectorXd z_pred_ = VectorXd(n_z_);
+   z_pred_.setZero();
+
+   // measurement covariance matrix S
+   MatrixXd S = MatrixXd(n_z_, n_z_);
+
+   // create matrix for sigma points in measurement space
+   MatrixXd Zsig_ = MatrixXd(n_z_, 2 * n_aug_ + 1);
+
+   // transform sigma points into measurement space
+   // calculate mean predicted measurement
+   // calculate innovation covariance matrix S
+
+   for (int i=0; i < 2 * n_aug_ + 1; i++) {
+     VectorXd xk1 = Xsig_pred_.col(i);
+
+     double px = xk1[0];
+     double py = xk1[1];
+
+     VectorXd Zk1 = VectorXd(n_z_);
+     Zk1 << px, py;
+     Zsig_.col(i) = Zk1;
+
+     z_pred_ += weights_[i] * Zk1;
+   }
+
+   S.setZero();
+   for (int i=0; i < 2 * n_aug_ + 1; i++) {
+       VectorXd diff = (Zsig_.col(i) - z_pred_);
+       S += weights_[i] * diff * diff.transpose();
+   }
+
+   MatrixXd R = MatrixXd(n_z_, n_z_);
+   R << std_laspx_ * std_laspx_, 0, 0, std_laspy * std_laspy;
+
+   S += R;
+
+   // create matrix for cross correlation Tc
+   MatrixXd Tc = MatrixXd(n_x_, n_z_);
+
+   // calculate cross correlation matrix
+   Tc.setZero();
+   for (int i =0; i < 2 * n_aug_ + 1; i++) {
+       Tc += weights_[i] * (Xsig_pred_.col(i) - x_) * (Zsig_.col(i) - z_pred_).transpose();
+   }
+
+   // calculate Kalman gain K;
+   MatrixXd K = Tc * S.inverse();
+
+   // vector for incoming radar measurement
+   VectorXd z_ = meas_package.raw_measurements_;
+
+   // update state mean and covariance matrix
+   VectorXd z_diff = z_ - z_pred_;
+
+   x_ = x_ + K * z_diff;
+   P_ = P_ - K * S * K.transpose();
+
 }
 
 void UKF::UpdateRadar(MeasurementPackage meas_package) {
